@@ -33,7 +33,7 @@ doom_font = pygame.font.Font(None, int(HEIGHT * 0.2))
 game_started = False
 
 # Number of cursors (one for real mouse + virtual mice)
-NUM_CURSORS = 10  # Reduced for better performance and realistic mouse count
+NUM_CURSORS = 50  # Reduced for better performance and realistic mouse count
 cursors = []
 
 # Virtual mice tracking (simulating multiple mouse inputs)
@@ -98,14 +98,13 @@ def initialize_cursors_in_circle():
 		y = center_y + radius * math.sin(angle) - int(WIDTH * 0.01)
 		
 		# Initialize cursor data
-		# [x, y, target_x, target_y, cursor_surface, rotation_angle, rotation_speed, mouse_id, following_mouse, is_real_mouse]
+		# [x, y, target_x, target_y, cursor_surface, rotation_angle, mouse_id, following_mouse, is_real_mouse]
 		color = random_color()
 		cursor_surface = create_cursor_surface(color)
 		rotation_angle = random.uniform(0, 360)
-		rotation_speed = random.uniform(-3, 3)
 		mouse_id = i
 		is_real_mouse = (i == 0)  # First cursor follows real mouse
-		cursors.append([x, y, x, y, cursor_surface, rotation_angle, rotation_speed, mouse_id, False, is_real_mouse])
+		cursors.append([x, y, x, y, cursor_surface, rotation_angle, mouse_id, False, is_real_mouse])
 
 # Update virtual mice positions
 def update_virtual_mice():
@@ -153,7 +152,7 @@ while True:
 					# Hide the OS mouse cursor after starting
 					pygame.mouse.set_visible(False)
 					for i, c in enumerate(cursors):
-						if c[9]:  # if is_real_mouse
+						if c[8]:  # if is_real_mouse
 							# First cursor follows real mouse
 							mouse_pos = pygame.mouse.get_pos()
 							c[2] = mouse_pos[0]  # target_x
@@ -164,7 +163,23 @@ while True:
 							if virtual_mouse_idx < len(virtual_mice):
 								c[2] = virtual_mice[virtual_mouse_idx][0]  # target_x
 								c[3] = virtual_mice[virtual_mouse_idx][1]  # target_y
-						c[8] = True  # following_mouse = True
+						c[7] = True  # following_mouse = True
+		
+		elif event.type == pygame.MOUSEWHEEL:
+			# Handle scroll wheel for rotation
+			if game_started:
+				# Scroll up = positive rotation, scroll down = negative rotation
+				rotation_delta = event.y * 10  # Adjust sensitivity as needed
+				
+				# Apply rotation to all cursors
+				for c in cursors:
+					c[5] += rotation_delta  # rotation_angle
+					
+					# Keep angle between 0 and 360
+					if c[5] >= 360:
+						c[5] -= 360
+					elif c[5] < 0:
+						c[5] += 360
 
 	screen.fill(BLACK)
 
@@ -196,16 +211,7 @@ while True:
 		
 		# Draw cursors in circle (static)
 		for c in cursors:
-			# Just rotate, don't move
-			c[5] += c[6]  # angle += rotation_speed
-			
-			# Keep angle between 0 and 360
-			if c[5] >= 360:
-				c[5] -= 360
-			elif c[5] < 0:
-				c[5] += 360
-			
-			# Rotate cursor surface
+			# Rotate cursor surface (no automatic rotation anymore)
 			rotated_cursor = pygame.transform.rotate(c[4], c[5])
 			
 			# Get the center of the rotated surface for proper positioning
@@ -220,18 +226,9 @@ while True:
 		
 		# Game is running - cursors follow their assigned mice
 		for i, c in enumerate(cursors):
-			# Update rotation
-			c[5] += c[6]  # angle += rotation_speed
-			
-			# Keep angle between 0 and 360
-			if c[5] >= 360:
-				c[5] -= 360
-			elif c[5] < 0:
-				c[5] += 360
-			
 			# Each cursor follows its assigned mouse
-			if c[8]:  # if following_mouse
-				if c[9]:  # if is_real_mouse
+			if c[7]:  # if following_mouse
+				if c[8]:  # if is_real_mouse
 					# First cursor follows real mouse position
 					mouse_pos = pygame.mouse.get_pos()
 					target_x = mouse_pos[0]
@@ -246,7 +243,7 @@ while True:
 						continue
 				
 				# Add small offset to make cursors slightly offset from mouse positions (except for real mouse)
-				if not c[9]:  # Don't offset the real mouse cursor
+				if not c[8]:  # Don't offset the real mouse cursor
 					offset_distance = int(WIDTH * 0.02) + (i * 3)
 					offset_angle = (2 * math.pi * i) / NUM_CURSORS
 					offset_x = offset_distance * math.cos(offset_angle)
@@ -256,7 +253,7 @@ while True:
 					target_y += offset_y
 				
 				# Smooth interpolation towards target (faster for real mouse)
-				speed = 0.3 if c[9] else 0.15
+				speed = 0.3 if c[8] else 0.15
 				c[0] += (target_x - c[0]) * speed
 				c[1] += (target_y - c[1]) * speed
 				
@@ -274,7 +271,7 @@ while True:
 			screen.blit(rotated_cursor, rect)
 		
 		# Draw instructions
-		instructions = small_font.render("Your mouse is now a cursor! Move it around!", True, WHITE)
+		instructions = small_font.render("Your mouse is now a cursor! Move it around! Use scroll wheel to rotate!", True, WHITE)
 		instructions_rect = instructions.get_rect(center=(WIDTH//2, HEIGHT - int(HEIGHT * 0.05)))
 		screen.blit(instructions, instructions_rect)
 
